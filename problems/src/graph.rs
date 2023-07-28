@@ -21,13 +21,8 @@ fn find_path_dfs(from: usize, to: usize, g: &Graph) -> bool {
                     break;
                 }
 
-                match g.edges_for(node) {
-                    Some(edges) => {
-                        for e in edges {
-                            stack.push(*e);
-                        }
-                    }
-                    None => continue,
+                for e in g.edges_for_node(node) {
+                    stack.push(e);
                 }
             }
             None => continue,
@@ -55,15 +50,10 @@ fn find_path_bfs(from: usize, to: usize, graph: &Graph) -> bool {
                     continue;
                 }
 
-                match graph.edges_for(node) {
-                    Some(edges) => {
-                        for e in edges {
-                            if !seen.contains(e) {
-                                queue.push_back(*e);
-                            }
-                        }
+                for e in graph.edges_for_node(node) {
+                    if !seen.contains(&e) {
+                        queue.push_back(e);
                     }
-                    None => continue,
                 }
             }
             None => continue,
@@ -94,12 +84,10 @@ pub fn topological_sort(g: &Graph) -> Vec<usize> {
     for v in vertices {
         if !visited.contains(&v) {
             visited.insert(v);
-            if let Some(edges) = g.edges_for(v) {
-                for e in edges {
-                    if !visited.contains(e) {
-                        visited.insert(*e);
-                        stack.push(*e);
-                    }
+            for e in g.edges_for_node(v) {
+                if !visited.contains(&e) {
+                    visited.insert(e);
+                    stack.push(e);
                 }
             }
             stack.push(v);

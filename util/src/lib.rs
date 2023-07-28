@@ -156,6 +156,12 @@ impl Graph {
         self._g.get(node)
     }
 
+    pub fn edges_for_node(&self, node: usize) -> Vec<usize> {
+        self._g
+            .get(node)
+            .map_or_else(Vec::new, |edges| edges.to_vec())
+    }
+
     pub fn nodes(&self) -> usize {
         self._g.len()
     }
