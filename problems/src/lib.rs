@@ -35,4 +35,15 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn should_match_topo_logical_sort_given_graph() -> Result<(), InvalidGraphError> {
+        let g = Graph::new(6, "[[5,2], [5,0], [4, 0], [4,1], [2, 3], [3, 1]]", DIRECTED)?;
+        assert_eq!(graph::topological_sort(&g), vec![5, 4, 2, 3, 1, 0]);
+
+        let g = Graph::new(4, "[[1, 0], [2, 0], [3, 0]]", DIRECTED)?;
+        assert_eq!(graph::topological_sort(&g), vec![3, 2, 1, 0]);
+
+        Ok(())
+    }
 }

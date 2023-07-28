@@ -85,3 +85,27 @@ pub fn find_path(from: usize, to: usize, g: &Graph, s_type: SearchType) -> bool 
         DFS => find_path_dfs(from, to, g),
     }
 }
+
+pub fn topological_sort(g: &Graph) -> Vec<usize> {
+    let mut visited: HashSet<usize> = HashSet::new();
+    let mut stack: Vec<usize> = Vec::with_capacity(g.nodes());
+    let vertices: Vec<usize> = (0..g.nodes()).collect();
+
+    for v in vertices {
+        if !visited.contains(&v) {
+            visited.insert(v);
+            if let Some(edges) = g.edges_for(v) {
+                for e in edges {
+                    if !visited.contains(e) {
+                        visited.insert(*e);
+                        stack.push(*e);
+                    }
+                }
+            }
+            stack.push(v);
+        }
+    }
+
+    stack.reverse();
+    stack[..].to_vec()
+}
