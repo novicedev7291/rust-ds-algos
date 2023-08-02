@@ -15,9 +15,34 @@
 
 use std::fmt::Display;
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Edge {
+    to_node: usize,
+    val: usize,
+}
+
+impl Edge {
+    fn new(to_node: usize, val: usize) -> Self {
+        Self { to_node, val }
+    }
+}
+
+pub trait UnitWeightedGraph {
+    fn new(nodes: usize, edges: &str, g_type: GraphType) -> Result<Graph, InvalidGraphError>;
+}
+
+pub trait WeightedGraph {
+    fn new(
+        nodes: usize,
+        edges: &str,
+        edge_vals: &str,
+        g_type: GraphType,
+    ) -> Result<Graph, InvalidGraphError>;
+}
+
 #[derive(Debug)]
 pub struct Graph {
-    _g: Vec<Vec<usize>>,
+    _g: Vec<Vec<Edge>>,
     _type: GraphType,
 }
 
@@ -90,12 +115,24 @@ impl Display for InvalidGraphError {
 }
 
 impl Graph {
-    pub fn new(nodes: usize, edges: &str, g_type: GraphType) -> Result<Self, InvalidGraphError> {
+    pub fn edges_for_node(&self, node: usize) -> Vec<usize> {
+        self._g
+            .get(node)
+            .map_or_else(Vec::new, |edges| edges.iter().map(|n| n.to_node).collect())
+    }
+
+    pub fn nodes(&self) -> usize {
+        self._g.len()
+    }
+}
+
+impl UnitWeightedGraph for Graph {
+    fn new(nodes: usize, edges: &str, g_type: GraphType) -> Result<Self, InvalidGraphError> {
         if g_type == GraphType::INDIRECTED {
             unimplemented!();
         }
 
-        let mut graph: Vec<Vec<usize>> = Vec::with_capacity(nodes);
+        let mut graph: Vec<Vec<Edge>> = Vec::with_capacity(nodes);
         for _ in 0..nodes {
             graph.push(vec![]);
         }
@@ -122,7 +159,7 @@ impl Graph {
                         }
 
                         if let Some(node) = graph.get_mut(edge[0]) {
-                            node.push(edge[1]);
+                            node.push(Edge::new(edge[1], 1));
                         } else {
                             return Err(InvalidGraphError {
                                 msg: "No. of nodes & edges for nodes doesn't match".to_owned(),
@@ -151,19 +188,74 @@ impl Graph {
             _type: g_type,
         })
     }
+}
 
-    pub fn edges_for(&self, node: usize) -> Option<&Vec<usize>> {
-        self._g.get(node)
-    }
+impl WeightedGraph for Graph {
+    fn new(
+        nodes: usize,
+        edges: &str,
+        edge_vals: &str,
+        g_type: GraphType,
+    ) -> Result<Self, InvalidGraphError> {
+        if g_type == GraphType::INDIRECTED {
+            unimplemented!();
+        }
 
-    pub fn edges_for_node(&self, node: usize) -> Vec<usize> {
-        self._g
-            .get(node)
-            .map_or_else(Vec::new, |edges| edges.to_vec())
-    }
+        let mut graph: Vec<Vec<Edge>> = Vec::with_capacity(nodes);
+        for _ in 0..nodes {
+            graph.push(vec![]);
+        }
 
-    pub fn nodes(&self) -> usize {
-        self._g.len()
+        let mut arr_start = false;
+        let mut inner_arr_i: usize = usize::MAX;
+
+        for (i, char) in edges.chars().enumerate() {
+            match char {
+                '[' => {
+                    if arr_start {
+                        inner_arr_i = i;
+                    }
+                    arr_start = true;
+                }
+                ']' => {
+                    if inner_arr_i != usize::MAX {
+                        let edge = parse_array(&edges[inner_arr_i..i + 1]).unwrap();
+                        if edge.len() != 2 {
+                            eprint!("Inner edge array should have only two element");
+                            return Err(InvalidGraphError {
+                                msg: "Inner edge array should have only two element".to_owned(),
+                            });
+                        }
+
+                        if let Some(node) = graph.get_mut(edge[0]) {
+                            node.push(Edge::new(edge[1], 1));
+                        } else {
+                            return Err(InvalidGraphError {
+                                msg: "No. of nodes & edges for nodes doesn't match".to_owned(),
+                            });
+                        }
+
+                        inner_arr_i = usize::MAX;
+                    } else {
+                        break;
+                    }
+                }
+                ',' | ' ' => continue,
+                _ => {
+                    if inner_arr_i != usize::MAX {
+                        continue;
+                    }
+                    eprint!("Unknow character encountered during processing edges, exiting!!!");
+                    return Err(InvalidGraphError {
+                        msg: format!("Unknown character in edges string {}", char),
+                    });
+                }
+            }
+        }
+        Ok(Self {
+            _g: graph,
+            _type: g_type,
+        })
     }
 }
 
@@ -174,26 +266,29 @@ mod tests {
 
     #[test]
     fn should_create_graph() {
-        let graph = Graph::new(3, "[[0, 1], [1, 2], [2, 0]]", DIRECTED).unwrap();
+        let graph =
+            <Graph as UnitWeightedGraph>::new(3, "[[0, 1], [1, 2], [2, 0]]", DIRECTED).unwrap();
 
-        assert_eq!(graph._g[0], vec![1]);
-        assert_eq!(graph._g[1], vec![2]);
-        assert_eq!(graph._g[2], vec![0]);
+        assert_eq!(graph._g[0], vec![Edge::new(1, 1)]);
+        assert_eq!(graph._g[1], vec![Edge::new(2, 1)]);
+        assert_eq!(graph._g[2], vec![Edge::new(0, 1)]);
     }
 
     #[test]
     fn should_pass_this_test() {
-        let graph = Graph::new(4, "[[1, 2], [0, 2], [2, 3], [1, 3]]", DIRECTED).unwrap();
+        let graph =
+            <Graph as UnitWeightedGraph>::new(4, "[[1, 2], [0, 2], [2, 3], [1, 3]]", DIRECTED)
+                .unwrap();
 
-        assert_eq!(graph._g[0], vec![2]);
-        assert_eq!(graph._g[1], vec![2, 3]);
-        assert_eq!(graph._g[2], vec![3]);
+        assert_eq!(graph._g[0], vec![Edge::new(2, 1)]);
+        assert_eq!(graph._g[1], vec![Edge::new(2, 1), Edge::new(3, 1)]);
+        assert_eq!(graph._g[2], vec![Edge::new(3, 1)]);
         assert_eq!(graph._g[3], vec![]);
     }
 
     #[test]
     fn should_error_when_invalid_char_in_edges() {
-        assert!(Graph::new(2, "[[0,1] , 239, [1, 0]]", DIRECTED).is_err());
+        assert!(<Graph as UnitWeightedGraph>::new(2, "[[0,1] , 239, [1, 0]]", DIRECTED).is_err());
     }
 
     #[test]
