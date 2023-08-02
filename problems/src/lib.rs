@@ -4,7 +4,7 @@ pub mod graph;
 mod tests {
     use super::graph::SearchType::*;
     use super::*;
-    use util::{Graph, InvalidGraphError};
+    use util::{Graph, InvalidGraphError, WeightedGraph};
     use util::{GraphType::*, UnitWeightedGraph};
 
     #[test]
@@ -33,6 +33,14 @@ mod tests {
         let g = <Graph as UnitWeightedGraph>::new(3, "[[0,1],[1,2],[2,0]]", DIRECTED)?;
         assert!(graph::find_path(0, 2, &g, DFS));
 
+        let g = <Graph as WeightedGraph>::new(
+            6,
+            "[[0,1], [0,3], [1, 2], [3, 2], [2, 4], [4, 5]]",
+            "[2, 3, 6, 3, 4, 2 ]",
+            DIRECTED,
+        )?;
+        assert!(graph::find_path(0, 5, &g, DFS));
+
         Ok(())
     }
 
@@ -47,6 +55,20 @@ mod tests {
 
         let g = <Graph as UnitWeightedGraph>::new(4, "[[1, 0], [2, 0], [3, 0]]", DIRECTED)?;
         assert_eq!(graph::topological_sort(&g), vec![3, 2, 1, 0]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_find_shortest_distance_to_given_node_from_start() -> Result<(), InvalidGraphError> {
+        let g = <Graph as WeightedGraph>::new(
+            6,
+            "[[0,1], [0,3], [1, 2], [3, 2], [2, 4], [4, 5]]",
+            "[2, 3, 6, 3, 4, 2 ]",
+            DIRECTED,
+        )?;
+
+        assert_eq!(graph::find_distance(&g, 0, 5), 12);
 
         Ok(())
     }

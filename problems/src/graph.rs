@@ -97,3 +97,59 @@ pub fn topological_sort(g: &Graph) -> Vec<usize> {
     stack.reverse();
     stack[..].to_vec()
 }
+
+/// This function implements Dijkstra's algorithm
+pub fn find_distance(g: &Graph, from_node: usize, to_node: usize) -> usize {
+    use SearchType::DFS;
+    if !find_path(from_node, to_node, g, DFS) {
+        return 0;
+    }
+
+    let mut dist = vec![usize::MAX; g.nodes()];
+
+    let mut visited = HashSet::with_capacity(g.nodes());
+    dist[from_node] = 0;
+    visited.insert(from_node);
+
+    loop {
+        let (n, n_cost) = find_node_smallest_dist(&dist);
+
+        if n == to_node {
+            return n_cost;
+        }
+
+        if visited.contains(&to_node) {
+            break;
+        }
+
+        if visited.contains(&n) {
+            continue;
+        }
+
+        for e in g.edges_for(n) {
+            let next = e.to();
+            if !visited.contains(&next) {
+                let next_cost = e.cost();
+                if (n_cost + next_cost) < dist[next] {
+                    dist[next] = n_cost + next_cost;
+                }
+                visited.insert(next);
+            }
+        }
+    }
+
+    0
+}
+
+fn find_node_smallest_dist(dist: &Vec<usize>) -> (usize, usize) {
+    let mut smallest = usize::MAX;
+    let mut smallest_i = usize::MAX;
+    for (i, n) in dist.iter().enumerate() {
+        if *n < smallest {
+            smallest = *n;
+            smallest_i = i;
+        }
+    }
+
+    (smallest_i, smallest)
+}

@@ -25,6 +25,14 @@ impl Edge {
     fn new(to_node: usize, val: usize) -> Self {
         Self { to_node, val }
     }
+
+    pub fn to(&self) -> usize {
+        self.to_node
+    }
+
+    pub fn cost(&self) -> usize {
+        self.val
+    }
 }
 
 pub trait UnitWeightedGraph {
@@ -119,6 +127,10 @@ impl Graph {
         self._g
             .get(node)
             .map_or_else(Vec::new, |edges| edges.iter().map(|n| n.to_node).collect())
+    }
+
+    pub fn edges_for(&self, node: usize) -> Vec<&Edge> {
+        self._g[node].iter().map(|e| e).collect()
     }
 
     pub fn nodes(&self) -> usize {
