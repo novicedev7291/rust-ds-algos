@@ -21,7 +21,7 @@ fn find_path_dfs(from: usize, to: usize, g: &Graph) -> bool {
                     break;
                 }
 
-                for e in g.edges_for_node(node) {
+                for e in g.neighbours(node) {
                     stack.push(e);
                 }
             }
@@ -50,7 +50,7 @@ fn find_path_bfs(from: usize, to: usize, graph: &Graph) -> bool {
                     continue;
                 }
 
-                for e in graph.edges_for_node(node) {
+                for e in graph.neighbours(node) {
                     if !seen.contains(&e) {
                         queue.push_back(e);
                     }
@@ -84,7 +84,7 @@ pub fn topological_sort(g: &Graph) -> Vec<usize> {
     for v in vertices {
         if !visited.contains(&v) {
             visited.insert(v);
-            for e in g.edges_for_node(v) {
+            for e in g.neighbours(v) {
                 if !visited.contains(&e) {
                     visited.insert(e);
                     stack.push(e);

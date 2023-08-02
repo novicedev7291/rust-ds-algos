@@ -115,7 +115,7 @@ impl Display for InvalidGraphError {
 }
 
 impl Graph {
-    pub fn edges_for_node(&self, node: usize) -> Vec<usize> {
+    pub fn neighbours(&self, node: usize) -> Vec<usize> {
         self._g
             .get(node)
             .map_or_else(Vec::new, |edges| edges.iter().map(|n| n.to_node).collect())
@@ -206,20 +206,30 @@ impl WeightedGraph for Graph {
             graph.push(vec![]);
         }
 
+        let weights = parse_array(edge_vals).unwrap();
+        if weights.len() != graph.len() {
+            return Err(InvalidGraphError {
+                msg:
+                    "All weights must be provided for edges, only few or more provided than edges!!"
+                        .to_owned(),
+            });
+        }
+
         let mut arr_start = false;
-        let mut inner_arr_i: usize = usize::MAX;
+        let mut inner_sb_i: usize = usize::MAX;
+        let mut edge_i = 0;
 
         for (i, char) in edges.chars().enumerate() {
             match char {
                 '[' => {
                     if arr_start {
-                        inner_arr_i = i;
+                        inner_sb_i = i;
                     }
                     arr_start = true;
                 }
                 ']' => {
-                    if inner_arr_i != usize::MAX {
-                        let edge = parse_array(&edges[inner_arr_i..i + 1]).unwrap();
+                    if inner_sb_i != usize::MAX {
+                        let edge = parse_array(&edges[inner_sb_i..i + 1]).unwrap();
                         if edge.len() != 2 {
                             eprint!("Inner edge array should have only two element");
                             return Err(InvalidGraphError {
@@ -228,21 +238,22 @@ impl WeightedGraph for Graph {
                         }
 
                         if let Some(node) = graph.get_mut(edge[0]) {
-                            node.push(Edge::new(edge[1], 1));
+                            node.push(Edge::new(edge[1], *weights.get(edge_i).unwrap()));
                         } else {
                             return Err(InvalidGraphError {
                                 msg: "No. of nodes & edges for nodes doesn't match".to_owned(),
                             });
                         }
 
-                        inner_arr_i = usize::MAX;
+                        inner_sb_i = usize::MAX;
+                        edge_i += 1;
                     } else {
                         break;
                     }
                 }
                 ',' | ' ' => continue,
                 _ => {
-                    if inner_arr_i != usize::MAX {
+                    if inner_sb_i != usize::MAX {
                         continue;
                     }
                     eprint!("Unknow character encountered during processing edges, exiting!!!");
@@ -289,6 +300,22 @@ mod tests {
     #[test]
     fn should_error_when_invalid_char_in_edges() {
         assert!(<Graph as UnitWeightedGraph>::new(2, "[[0,1] , 239, [1, 0]]", DIRECTED).is_err());
+    }
+
+    #[test]
+    fn should_create_weighted_graph() {
+        let g = <Graph as WeightedGraph>::new(
+            4,
+            "[[1, 2], [0, 2], [2, 3], [1, 3]]",
+            "[2, 7, 1, 4]",
+            DIRECTED,
+        )
+        .unwrap();
+
+        assert_eq!(g._g[0], vec![Edge::new(2, 7)]);
+        assert_eq!(g._g[1], vec![Edge::new(2, 2), Edge::new(3, 4)]);
+        assert_eq!(g._g[2], vec![Edge::new(3, 1)]);
+        assert_eq!(g._g[3], vec![]);
     }
 
     #[test]
