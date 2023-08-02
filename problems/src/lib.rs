@@ -69,6 +69,8 @@ mod tests {
         )?;
 
         assert_eq!(graph::find_distance(&g, 0, 5), 12);
+        assert_eq!(graph::find_distance(&g, 1, 5), 12);
+        assert_eq!(graph::find_distance(&g, 3, 4), 7);
 
         Ok(())
     }

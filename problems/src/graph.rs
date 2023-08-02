@@ -1,3 +1,5 @@
+use std::cmp::Ord;
+use std::collections::BinaryHeap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 use util::Graph;
@@ -98,58 +100,48 @@ pub fn topological_sort(g: &Graph) -> Vec<usize> {
     stack[..].to_vec()
 }
 
+#[derive(Debug, Eq, PartialEq, PartialOrd)]
+struct Pair {
+    i: usize,
+    cost: usize,
+}
+
+impl Ord for Pair {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other.cost.cmp(&self.cost)
+    }
+}
+
 /// This function implements Dijkstra's algorithm
 pub fn find_distance(g: &Graph, from_node: usize, to_node: usize) -> usize {
-    use SearchType::DFS;
-    if !find_path(from_node, to_node, g, DFS) {
-        return 0;
-    }
-
     let mut dist = vec![usize::MAX; g.nodes()];
 
-    let mut visited = HashSet::with_capacity(g.nodes());
+    let mut min_q = BinaryHeap::with_capacity(g.nodes());
     dist[from_node] = 0;
-    visited.insert(from_node);
+    min_q.push(Pair {
+        i: from_node,
+        cost: 0,
+    });
 
-    loop {
-        let (n, n_cost) = find_node_smallest_dist(&dist);
+    while !min_q.is_empty() {
+        if let Some(Pair { i, cost }) = min_q.pop() {
+            if i == to_node {
+                return cost;
+            }
 
-        if n == to_node {
-            return n_cost;
-        }
-
-        if visited.contains(&to_node) {
-            break;
-        }
-
-        if visited.contains(&n) {
-            continue;
-        }
-
-        for e in g.edges_for(n) {
-            let next = e.to();
-            if !visited.contains(&next) {
+            for e in g.edges_for(i) {
+                let next = e.to();
                 let next_cost = e.cost();
-                if (n_cost + next_cost) < dist[next] {
-                    dist[next] = n_cost + next_cost;
+                if (cost + next_cost) < dist[next] {
+                    dist[next] = cost + next_cost;
                 }
-                visited.insert(next);
+                min_q.push(Pair {
+                    i: next,
+                    cost: dist[next],
+                });
             }
         }
     }
 
     0
-}
-
-fn find_node_smallest_dist(dist: &Vec<usize>) -> (usize, usize) {
-    let mut smallest = usize::MAX;
-    let mut smallest_i = usize::MAX;
-    for (i, n) in dist.iter().enumerate() {
-        if *n < smallest {
-            smallest = *n;
-            smallest_i = i;
-        }
-    }
-
-    (smallest_i, smallest)
 }
