@@ -63,7 +63,7 @@ pub struct Graph {
 #[derive(Eq, PartialEq, Debug)]
 pub enum GraphType {
     DIRECTED,
-    INDIRECTED,
+    UNDIRECTED,
 }
 
 #[derive(Debug, Clone)]
@@ -175,8 +175,8 @@ impl UnitWeightedGraph for Graph {
                         if let Some(node) = graph.get_mut(edge[0]) {
                             node.push(Edge::new(edge[1], 1));
 
-                            use GraphType::INDIRECTED;
-                            if g_type == INDIRECTED {
+                            use GraphType::UNDIRECTED;
+                            if g_type == UNDIRECTED {
                                 if let Some(node) = graph.get_mut(edge[1]) {
                                     node.push(Edge::new(edge[0], 1));
                                 }
@@ -218,7 +218,7 @@ impl WeightedGraph for Graph {
         edge_vals: &str,
         g_type: GraphType,
     ) -> Result<Self, InvalidGraphError> {
-        if g_type == GraphType::INDIRECTED {
+        if g_type == GraphType::UNDIRECTED {
             unimplemented!();
         }
 
@@ -371,8 +371,8 @@ mod tests {
 
     #[test]
     fn should_create_undirected_graph() -> Result<(), InvalidGraphError> {
-        use GraphType::INDIRECTED;
-        let g = <Graph as UnitWeightedGraph>::new(3, "[[0,1], [1,2], [2, 0]]", INDIRECTED)?;
+        use GraphType::UNDIRECTED;
+        let g = <Graph as UnitWeightedGraph>::new(3, "[[0,1], [1,2], [2, 0]]", UNDIRECTED)?;
 
         assert_eq!(
             g._g[0]
