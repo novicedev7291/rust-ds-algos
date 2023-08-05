@@ -15,7 +15,7 @@
 
 use std::fmt::Display;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub struct Edge {
     to_node: usize,
     val: usize,
@@ -32,6 +32,12 @@ impl Edge {
 
     pub fn cost(&self) -> usize {
         self.val
+    }
+}
+
+impl Ord for Edge {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.to_node.cmp(&other.to_node)
     }
 }
 
@@ -140,10 +146,6 @@ impl Graph {
 
 impl UnitWeightedGraph for Graph {
     fn new(nodes: usize, edges: &str, g_type: GraphType) -> Result<Self, InvalidGraphError> {
-        if g_type == GraphType::INDIRECTED {
-            unimplemented!();
-        }
-
         let mut graph: Vec<Vec<Edge>> = Vec::with_capacity(nodes);
         for _ in 0..nodes {
             graph.push(vec![]);
@@ -172,6 +174,13 @@ impl UnitWeightedGraph for Graph {
 
                         if let Some(node) = graph.get_mut(edge[0]) {
                             node.push(Edge::new(edge[1], 1));
+
+                            use GraphType::INDIRECTED;
+                            if g_type == INDIRECTED {
+                                if let Some(node) = graph.get_mut(edge[1]) {
+                                    node.push(Edge::new(edge[0], 1));
+                                }
+                            }
                         } else {
                             return Err(InvalidGraphError {
                                 msg: "No. of nodes & edges for nodes doesn't match".to_owned(),
@@ -358,5 +367,38 @@ mod tests {
     fn should_error_when_no_end_found() {
         let arr_str = "[1, 2, 3,4";
         assert!(parse_array(arr_str).is_err());
+    }
+
+    #[test]
+    fn should_create_undirected_graph() -> Result<(), InvalidGraphError> {
+        use GraphType::INDIRECTED;
+        let g = <Graph as UnitWeightedGraph>::new(3, "[[0,1], [1,2], [2, 0]]", INDIRECTED)?;
+
+        assert_eq!(
+            g._g[0]
+                .iter()
+                .map(|e| e.clone())
+                .collect::<Vec<Edge>>()
+                .sort(),
+            vec![Edge::new(1, 1), Edge::new(2, 1)].sort()
+        );
+        assert_eq!(
+            g._g[1]
+                .iter()
+                .map(|e| e.clone())
+                .collect::<Vec<Edge>>()
+                .sort(),
+            vec![Edge::new(0, 1), Edge::new(2, 1)].sort()
+        );
+        assert_eq!(
+            g._g[2]
+                .iter()
+                .map(|e| e.clone())
+                .collect::<Vec<Edge>>()
+                .sort(),
+            vec![Edge::new(0, 1), Edge::new(1, 1)].sort()
+        );
+
+        Ok(())
     }
 }
