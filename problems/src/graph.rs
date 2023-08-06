@@ -139,3 +139,30 @@ pub fn find_distance(g: &Graph, from_node: usize, to_node: usize) -> usize {
 
     0
 }
+
+fn find_parent(parent: &Vec<usize>, node: usize) -> usize {
+    if node == parent[node] {
+        return node;
+    }
+    find_parent(parent, parent[node])
+}
+
+pub fn has_cycle(g: &Graph) -> bool {
+    let mut parent = (0..g.nodes()).collect::<Vec<usize>>();
+
+    for n in 0..g.nodes() {
+        for neighbor in g.neighbours(n) {
+            let n_p = find_parent(&parent, n);
+            let neighbor_p = find_parent(&parent, neighbor);
+
+            if n_p == neighbor_p {
+                return true;
+            }
+
+            // Union
+            parent[n_p] = parent[neighbor_p];
+        }
+    }
+
+    false
+}

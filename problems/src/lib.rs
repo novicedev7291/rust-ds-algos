@@ -70,4 +70,22 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn should_find_cycle_in_undirected_graph() -> Result<(), InvalidGraphError> {
+        let g = Graph::new(3, "[[0,1],[1,2],[2,0]]", UNDIRECTED)?;
+
+        assert!(graph::has_cycle(&g));
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_not_find_cycle_in_undirected_graph() -> Result<(), InvalidGraphError> {
+        let g = Graph::new(4, "[[0,1],[1,2],[2,3]]", UNDIRECTED)?;
+
+        assert!(!graph::has_cycle(&g));
+
+        Ok(())
+    }
 }
