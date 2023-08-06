@@ -100,16 +100,10 @@ pub fn topological_sort(g: &Graph) -> Vec<usize> {
     stack[..].to_vec()
 }
 
-#[derive(Debug, Eq, PartialEq, PartialOrd)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
 struct Pair {
     i: usize,
     cost: usize,
-}
-
-impl Ord for Pair {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.cost.cmp(&self.cost)
-    }
 }
 
 /// This function implements Dijkstra's algorithm

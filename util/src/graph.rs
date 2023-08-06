@@ -1,15 +1,18 @@
 use parse::parse_array;
 use std::fmt::Display;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Edge {
     to_node: usize,
-    val: usize,
+    weight: usize,
 }
 
 impl Edge {
     fn new(to_node: usize, val: usize) -> Self {
-        Self { to_node, val }
+        Self {
+            to_node,
+            weight: val,
+        }
     }
 
     pub fn to(&self) -> usize {
@@ -17,27 +20,8 @@ impl Edge {
     }
 
     pub fn cost(&self) -> usize {
-        self.val
+        self.weight
     }
-}
-
-impl Ord for Edge {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.to_node.cmp(&other.to_node)
-    }
-}
-
-pub trait UnitWeightedGraph {
-    fn new(nodes: usize, edges: &str, g_type: GraphType) -> Result<Graph, InvalidGraphError>;
-}
-
-pub trait WeightedGraph {
-    fn new(
-        nodes: usize,
-        edges: &str,
-        edge_vals: &str,
-        g_type: GraphType,
-    ) -> Result<Graph, InvalidGraphError>;
 }
 
 #[derive(Debug)]
@@ -64,6 +48,29 @@ impl Display for InvalidGraphError {
 }
 
 impl Graph {
+    pub fn new_weighted(
+        nodes: usize,
+        edges: &str,
+        edge_vals: &str,
+        g_type: GraphType,
+    ) -> Result<Self, InvalidGraphError> {
+        parse_graph(nodes, edges, edge_vals, g_type)
+    }
+
+    pub fn new(nodes: usize, edges: &str, g_type: GraphType) -> Result<Self, InvalidGraphError> {
+        // Capacity because unit weight 1 + same number of , + [ + ]
+        let mut edge_vals = String::with_capacity(2 * nodes + 2);
+        edge_vals.push('[');
+        for i in 0..nodes {
+            edge_vals.push('1');
+            if i != nodes - 1 {
+                edge_vals.push(',');
+            }
+        }
+        edge_vals.push(']');
+        parse_graph(nodes, edges, &edge_vals[..], g_type)
+    }
+
     pub fn neighbours(&self, node: usize) -> Vec<usize> {
         self._g
             .get(node)
@@ -71,7 +78,7 @@ impl Graph {
     }
 
     pub fn edges_for(&self, node: usize) -> Vec<&Edge> {
-        self._g[node].iter().map(|e| e).collect()
+        self._g[node].iter().collect()
     }
 
     pub fn nodes(&self) -> usize {
@@ -160,32 +167,6 @@ fn parse_graph(
         _type: g_type,
     })
 }
-impl UnitWeightedGraph for Graph {
-    fn new(nodes: usize, edges: &str, g_type: GraphType) -> Result<Self, InvalidGraphError> {
-        // Capacity because unit weight 1 + same number of , + [ + ]
-        let mut edge_vals = String::with_capacity(2 * nodes + 2);
-        edge_vals.push('[');
-        for i in 0..nodes {
-            edge_vals.push('1');
-            if i != nodes - 1 {
-                edge_vals.push(',');
-            }
-        }
-        edge_vals.push(']');
-        parse_graph(nodes, edges, &edge_vals[..], g_type)
-    }
-}
-
-impl WeightedGraph for Graph {
-    fn new(
-        nodes: usize,
-        edges: &str,
-        edge_vals: &str,
-        g_type: GraphType,
-    ) -> Result<Self, InvalidGraphError> {
-        parse_graph(nodes, edges, edge_vals, g_type)
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -194,8 +175,7 @@ mod tests {
 
     #[test]
     fn should_create_graph() {
-        let graph =
-            <Graph as UnitWeightedGraph>::new(3, "[[0, 1], [1, 2], [2, 0]]", DIRECTED).unwrap();
+        let graph = Graph::new(3, "[[0, 1], [1, 2], [2, 0]]", DIRECTED).unwrap();
 
         assert_eq!(graph._g[0], vec![Edge::new(1, 1)]);
         assert_eq!(graph._g[1], vec![Edge::new(2, 1)]);
@@ -204,9 +184,7 @@ mod tests {
 
     #[test]
     fn should_pass_this_test() {
-        let graph =
-            <Graph as UnitWeightedGraph>::new(4, "[[1, 2], [0, 2], [2, 3], [1, 3]]", DIRECTED)
-                .unwrap();
+        let graph = Graph::new(4, "[[1, 2], [0, 2], [2, 3], [1, 3]]", DIRECTED).unwrap();
 
         assert_eq!(graph._g[0], vec![Edge::new(2, 1)]);
         assert_eq!(graph._g[1], vec![Edge::new(2, 1), Edge::new(3, 1)]);
@@ -216,12 +194,12 @@ mod tests {
 
     #[test]
     fn should_error_when_invalid_char_in_edges() {
-        assert!(<Graph as UnitWeightedGraph>::new(2, "[[0,1] , 239, [1, 0]]", DIRECTED).is_err());
+        assert!(Graph::new(2, "[[0,1] , 239, [1, 0]]", DIRECTED).is_err());
     }
 
     #[test]
     fn should_create_weighted_graph() {
-        let g = <Graph as WeightedGraph>::new(
+        let g = Graph::new_weighted(
             4,
             "[[1, 2], [0, 2], [2, 3], [1, 3]]",
             "[2, 7, 1, 4]",
@@ -267,19 +245,15 @@ mod tests {
 
     #[test]
     fn should_create_undirected_graph() -> Result<(), InvalidGraphError> {
-        let g = <Graph as UnitWeightedGraph>::new(3, "[[0,1], [1,2], [2, 0]]", UNDIRECTED)?;
+        let mut g = Graph::new(3, "[[0,1], [1,2], [2, 0]]", UNDIRECTED)?;
 
         assert_eq!(
-            g._g[0].iter().cloned().collect::<Vec<Edge>>().sort(),
-            vec![Edge::new(1, 1), Edge::new(2, 1)].sort()
-        );
-        assert_eq!(
-            g._g[1].iter().cloned().collect::<Vec<Edge>>().sort(),
-            vec![Edge::new(0, 1), Edge::new(2, 1)].sort()
-        );
-        assert_eq!(
-            g._g[2].iter().cloned().collect::<Vec<Edge>>().sort(),
-            vec![Edge::new(0, 1), Edge::new(1, 1)].sort()
+            graph_by_sorted_neighbors(&mut g),
+            vec![
+                vec![Edge::new(1, 1), Edge::new(2, 1)],
+                vec![Edge::new(0, 1), Edge::new(2, 1)],
+                vec![Edge::new(0, 1), Edge::new(1, 1)]
+            ]
         );
 
         Ok(())
@@ -287,22 +261,24 @@ mod tests {
 
     #[test]
     fn should_create_undirected_weighted_graph() -> Result<(), InvalidGraphError> {
-        let g =
-            <Graph as WeightedGraph>::new(3, "[[0,1], [1,2], [2, 0]]", "[2, 10, 7]", UNDIRECTED)?;
+        let mut g =
+            Graph::new_weighted(4, "[[2,3], [0,1], [1,2], [3,1]]", "[2,3,8,1]", UNDIRECTED)?;
 
         assert_eq!(
-            g._g[0].iter().cloned().collect::<Vec<Edge>>().sort(),
-            vec![Edge::new(1, 2), Edge::new(2, 2)].sort()
+            graph_by_sorted_neighbors(&mut g),
+            vec![
+                vec![Edge::new(1, 3)],
+                vec![Edge::new(0, 3), Edge::new(2, 8), Edge::new(3, 1)],
+                vec![Edge::new(1, 8), Edge::new(3, 2)],
+                vec![Edge::new(1, 1), Edge::new(2, 2)]
+            ]
         );
-        assert_eq!(
-            g._g[1].iter().cloned().collect::<Vec<Edge>>().sort(),
-            vec![Edge::new(0, 10), Edge::new(2, 10)].sort()
-        );
-        assert_eq!(
-            g._g[2].iter().cloned().collect::<Vec<Edge>>().sort(),
-            vec![Edge::new(0, 7), Edge::new(1, 7)].sort()
-        );
-
         Ok(())
+    }
+
+    fn graph_by_sorted_neighbors(g: &mut Graph) -> Vec<Vec<Edge>> {
+        let temp = &mut g._g.to_vec();
+        temp.iter_mut().for_each(|e| e.sort());
+        temp.to_vec()
     }
 }
