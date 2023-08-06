@@ -79,70 +79,100 @@ impl Graph {
     }
 }
 
-impl UnitWeightedGraph for Graph {
-    fn new(nodes: usize, edges: &str, g_type: GraphType) -> Result<Self, InvalidGraphError> {
-        let mut graph: Vec<Vec<Edge>> = Vec::with_capacity(nodes);
-        for _ in 0..nodes {
-            graph.push(vec![]);
-        }
+fn parse_graph(
+    nodes: usize,
+    edges: &str,
+    edge_vals: &str,
+    g_type: GraphType,
+) -> Result<Graph, InvalidGraphError> {
+    let mut graph: Vec<Vec<Edge>> = Vec::with_capacity(nodes);
+    for _ in 0..nodes {
+        graph.push(vec![]);
+    }
 
-        let mut arr_start = false;
-        let mut inner_arr_i: usize = usize::MAX;
+    let weights = parse_array(edge_vals).unwrap();
+    if weights.len() != graph.len() {
+        return Err(InvalidGraphError {
+            msg: "All weights must be provided for edges, only few or more provided than edges!!"
+                .to_owned(),
+        });
+    }
 
-        for (i, char) in edges.chars().enumerate() {
-            match char {
-                '[' => {
-                    if arr_start {
-                        inner_arr_i = i;
-                    }
-                    arr_start = true;
+    // To track starting bracked in string slice
+    let mut arr_start = false;
+    // To track starting bracket in inner array, when closing encountered, it is reset
+    let mut inner_sb_i: usize = usize::MAX;
+    // To track the edge weight in give edge_vals slice
+    let mut edge_i = 0;
+
+    for (i, char) in edges.chars().enumerate() {
+        match char {
+            '[' => {
+                if arr_start {
+                    inner_sb_i = i;
                 }
-                ']' => {
-                    if inner_arr_i != usize::MAX {
-                        let edge = parse_array(&edges[inner_arr_i..i + 1]).unwrap();
-                        if edge.len() != 2 {
-                            eprint!("Inner edge array should have only two element");
-                            return Err(InvalidGraphError {
-                                msg: "Inner edge array should have only two element".to_owned(),
-                            });
-                        }
+                arr_start = true;
+            }
+            ']' => {
+                if inner_sb_i != usize::MAX {
+                    let edge = parse_array(&edges[inner_sb_i..i + 1]).unwrap();
+                    if edge.len() != 2 {
+                        eprint!("Inner edge array should have only two element");
+                        return Err(InvalidGraphError {
+                            msg: "Inner edge array should have only two element".to_owned(),
+                        });
+                    }
 
-                        if let Some(node) = graph.get_mut(edge[0]) {
-                            node.push(Edge::new(edge[1], 1));
-
-                            use self::GraphType::UNDIRECTED;
-                            if g_type == UNDIRECTED {
-                                if let Some(node) = graph.get_mut(edge[1]) {
-                                    node.push(Edge::new(edge[0], 1));
-                                }
+                    if let Some(node) = graph.get_mut(edge[0]) {
+                        node.push(Edge::new(edge[1], weights[edge_i]));
+                        use self::GraphType::UNDIRECTED;
+                        if g_type == UNDIRECTED {
+                            if let Some(node) = graph.get_mut(edge[1]) {
+                                node.push(Edge::new(edge[0], weights[edge_i]));
                             }
-                        } else {
-                            return Err(InvalidGraphError {
-                                msg: "No. of nodes & edges for nodes doesn't match".to_owned(),
-                            });
                         }
-
-                        inner_arr_i = usize::MAX;
                     } else {
-                        break;
+                        return Err(InvalidGraphError {
+                            msg: "No. of nodes & edges for nodes doesn't match".to_owned(),
+                        });
                     }
-                }
-                ',' | ' ' => continue,
-                _ => {
-                    if inner_arr_i != usize::MAX {
-                        continue;
-                    }
-                    eprint!("Unknow character encountered during processing edges, exiting!!!");
-                    return Err(InvalidGraphError {
-                        msg: format!("Unknown character in edges string {}", char),
-                    });
+
+                    inner_sb_i = usize::MAX;
+                    edge_i += 1;
+                } else {
+                    break;
                 }
             }
+            ',' | ' ' => continue,
+            _ => {
+                if inner_sb_i != usize::MAX {
+                    continue;
+                }
+                eprint!("Unknow character encountered during processing edges, exiting!!!");
+                return Err(InvalidGraphError {
+                    msg: format!("Unknown character in edges string {}", char),
+                });
+            }
         }
-        Ok(Self {
-            _g: graph,
-            _type: g_type,
-        })
+    }
+    Ok(Graph {
+        _g: graph,
+        _type: g_type,
+    })
+}
+impl UnitWeightedGraph for Graph {
+    fn new(nodes: usize, edges: &str, g_type: GraphType) -> Result<Self, InvalidGraphError> {
+        // Capacity because unit weight 1 + same number of , + [ + ]
+        let mut edge_vals = String::with_capacity(2 * nodes + 2);
+        edge_vals.push('[');
+        for i in 0..nodes {
+            edge_vals.push('1');
+            if i != nodes - 1 {
+                edge_vals.push(',');
+            }
+        }
+        edge_vals.push(']');
+        parse_graph(nodes, edges, &edge_vals[..], g_type)
     }
 }
 
@@ -153,76 +183,7 @@ impl WeightedGraph for Graph {
         edge_vals: &str,
         g_type: GraphType,
     ) -> Result<Self, InvalidGraphError> {
-        if g_type == GraphType::UNDIRECTED {
-            unimplemented!();
-        }
-
-        let mut graph: Vec<Vec<Edge>> = Vec::with_capacity(nodes);
-        for _ in 0..nodes {
-            graph.push(vec![]);
-        }
-
-        let weights = parse_array(edge_vals).unwrap();
-        if weights.len() != graph.len() {
-            return Err(InvalidGraphError {
-                msg:
-                    "All weights must be provided for edges, only few or more provided than edges!!"
-                        .to_owned(),
-            });
-        }
-
-        let mut arr_start = false;
-        let mut inner_sb_i: usize = usize::MAX;
-        let mut edge_i = 0;
-
-        for (i, char) in edges.chars().enumerate() {
-            match char {
-                '[' => {
-                    if arr_start {
-                        inner_sb_i = i;
-                    }
-                    arr_start = true;
-                }
-                ']' => {
-                    if inner_sb_i != usize::MAX {
-                        let edge = parse_array(&edges[inner_sb_i..i + 1]).unwrap();
-                        if edge.len() != 2 {
-                            eprint!("Inner edge array should have only two element");
-                            return Err(InvalidGraphError {
-                                msg: "Inner edge array should have only two element".to_owned(),
-                            });
-                        }
-
-                        if let Some(node) = graph.get_mut(edge[0]) {
-                            node.push(Edge::new(edge[1], *weights.get(edge_i).unwrap()));
-                        } else {
-                            return Err(InvalidGraphError {
-                                msg: "No. of nodes & edges for nodes doesn't match".to_owned(),
-                            });
-                        }
-
-                        inner_sb_i = usize::MAX;
-                        edge_i += 1;
-                    } else {
-                        break;
-                    }
-                }
-                ',' | ' ' => continue,
-                _ => {
-                    if inner_sb_i != usize::MAX {
-                        continue;
-                    }
-                    eprint!("Unknow character encountered during processing edges, exiting!!!");
-                    return Err(InvalidGraphError {
-                        msg: format!("Unknown character in edges string {}", char),
-                    });
-                }
-            }
-        }
-        Ok(Self {
-            _g: graph,
-            _type: g_type,
-        })
+        parse_graph(nodes, edges, edge_vals, g_type)
     }
 }
 
@@ -319,6 +280,27 @@ mod tests {
         assert_eq!(
             g._g[2].iter().cloned().collect::<Vec<Edge>>().sort(),
             vec![Edge::new(0, 1), Edge::new(1, 1)].sort()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_create_undirected_weighted_graph() -> Result<(), InvalidGraphError> {
+        let g =
+            <Graph as WeightedGraph>::new(3, "[[0,1], [1,2], [2, 0]]", "[2, 10, 7]", UNDIRECTED)?;
+
+        assert_eq!(
+            g._g[0].iter().cloned().collect::<Vec<Edge>>().sort(),
+            vec![Edge::new(1, 2), Edge::new(2, 2)].sort()
+        );
+        assert_eq!(
+            g._g[1].iter().cloned().collect::<Vec<Edge>>().sort(),
+            vec![Edge::new(0, 10), Edge::new(2, 10)].sort()
+        );
+        assert_eq!(
+            g._g[2].iter().cloned().collect::<Vec<Edge>>().sort(),
+            vec![Edge::new(0, 7), Edge::new(1, 7)].sort()
         );
 
         Ok(())
