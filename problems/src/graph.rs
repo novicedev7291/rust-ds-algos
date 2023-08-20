@@ -2,6 +2,7 @@ use std::cmp::Ord;
 use std::collections::BinaryHeap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
+use std::hash::Hash;
 use util::Graph;
 
 fn find_path_dfs(from: usize, to: usize, g: &Graph) -> bool {
@@ -147,21 +148,59 @@ fn find_parent(parent: &Vec<usize>, node: usize) -> usize {
     find_parent(parent, parent[node])
 }
 
+fn union(parent: &mut Vec<usize>, n_i: usize, n_j: usize) {
+    let n_i_p = find_parent(parent, n_i);
+    let n_j_p = find_parent(parent, n_j);
+
+    parent[n_j_p] = n_i_p;
+}
+
+#[derive(Debug, Eq)]
+struct Path {
+    from: usize,
+    to: usize,
+}
+
+impl PartialEq for Path {
+    fn eq(&self, other: &Self) -> bool {
+        (self.from == other.from && self.to == other.to)
+            || (self.from == other.to && self.to == other.from)
+    }
+}
+
+impl Hash for Path {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        if self.from > self.to {
+            self.to.hash(state);
+            self.from.hash(state);
+        } else {
+            self.from.hash(state);
+            self.to.hash(state);
+        }
+    }
+}
+
 pub fn has_cycle(g: &Graph) -> bool {
     let mut parent = (0..g.nodes()).collect::<Vec<usize>>();
+    let edges = g
+        .all_edges()
+        .iter()
+        .map(|e| Path { from: e.0, to: e.1 })
+        .collect::<HashSet<Path>>();
 
-    for n in 0..g.nodes() {
-        for neighbor in g.neighbours(n) {
-            let n_p = find_parent(&parent, n);
-            let neighbor_p = find_parent(&parent, neighbor);
+    println!("{:?}", edges);
+    for e in edges {
+        let i = e.from;
+        let j = e.to;
 
-            if n_p == neighbor_p {
-                return true;
-            }
+        let n_i_p = find_parent(&parent, i);
+        let n_j_p = find_parent(&parent, j);
 
-            // Union
-            parent[n_p] = parent[neighbor_p];
+        if n_i_p == n_j_p {
+            return true;
         }
+
+        union(&mut parent, n_i_p, n_j_p);
     }
 
     false

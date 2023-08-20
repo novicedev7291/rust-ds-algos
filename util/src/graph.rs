@@ -84,6 +84,17 @@ impl Graph {
     pub fn nodes(&self) -> usize {
         self._g.len()
     }
+
+    pub fn all_edges(&self) -> Vec<(usize, usize)> {
+        (0..self.nodes())
+            .flat_map(|n| {
+                self.edges_for(n)
+                    .iter()
+                    .map(|e| (n, e.to()))
+                    .collect::<Vec<(usize, usize)>>()
+            })
+            .collect()
+    }
 }
 
 fn parse_graph(
